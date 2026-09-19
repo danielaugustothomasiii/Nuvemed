@@ -16,12 +16,12 @@ export const statusOptions = [
   { value: 'expired', label: 'Vencidos' },
   { value: 'soon15', label: 'Até 15 dias' },
   { value: 'soon30', label: '16 a 30 dias' },
-  { value: 'safe', label: 'Validade tranquila' },
+  { value: 'safe', label: 'Dentro do prazo' },
 ];
 
 export const cardFilterLabels = {
   soon15: 'Vencem em até 15 dias',
   expired: 'Vencidos',
-  safe: 'Validade tranquila',
+  safe: 'Dentro do prazo',
   out: 'Sem estoque',
 };

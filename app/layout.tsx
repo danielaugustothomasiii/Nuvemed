@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { ConfigProvider } from "antd";
+import { App as AntdApp, ConfigProvider } from "antd";
 import { antdTheme } from "@/theme";
 import "./globals.css";
 import "../styles.css";
@@ -38,7 +38,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AntdRegistry>
-            <ConfigProvider theme={antdTheme}>{children}</ConfigProvider>
+            <ConfigProvider theme={antdTheme}>
+              <AntdApp>{children}</AntdApp>
+            </ConfigProvider>
           </AntdRegistry>
         </ThemeProvider>
       </body>

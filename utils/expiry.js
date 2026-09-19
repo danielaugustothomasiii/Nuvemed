@@ -8,7 +8,7 @@ export function getExpiryInfo(expiry) {
   if (days < 0) return { key: 'expired', label: 'Vencido', color: 'red', days };
   if (days <= 15) return { key: 'soon15', label: 'Até 15 dias', color: 'orange', days };
   if (days <= 30) return { key: 'soon30', label: '16 a 30 dias', color: 'gold', days };
-  return { key: 'safe', label: 'Validade tranquila', color: 'green', days };
+  return { key: 'safe', label: 'Dentro do prazo', color: 'green', days };
 }
 
 export function formatDays(days) {
