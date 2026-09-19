@@ -1,46 +1,150 @@
-import { useCallback } from 'react';
-import { MOVEMENT_KEY, PRODUCT_KEY } from '../constants/inventory';
-import { seedProducts } from '../data/seedProducts';
-import { useLocalStorageState } from './useLocalStorageState';
+'use client';
 
-const emptyList = () => [];
+import { useCallback, useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient();
+
+function mapLoteParaProduto(lote) {
+  return {
+    id: lote.id,
+    insumo_id: lote.insumo_id,
+    name: lote.insumos?.nome,
+    category: lote.insumos?.categorias?.nome,
+    lot: lote.numero_lote,
+    quantity: lote.quantidade,
+    expiry: lote.data_validade,
+    manufacturer: lote.fabricante,
+  };
+}
 
 export function useInventory() {
-  const [products, setProducts] = useLocalStorageState(PRODUCT_KEY, seedProducts);
-  const [movements, setMovements] = useLocalStorageState(MOVEMENT_KEY, emptyList);
+  const [products, setProducts] = useState([]);
+  const [movements, setMovements] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const addMovement = useCallback((product, type, quantity, reason) => {
-    const movement = {
-      id: crypto.randomUUID(),
-      date: new Date().toISOString(),
-      productName: product.name,
-      lot: product.lot,
-      type,
-      quantity,
-      reason,
-    };
-    setMovements((current) => [movement, ...current]);
-  }, [setMovements]);
+  const carregarProdutos = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('lotes')
+      .select('id, insumo_id, numero_lote, quantidade, data_validade, fabricante, insumos(nome, categorias(nome))')
+      .order('data_validade', { ascending: true });
+    if (error) console.error('Erro ao carregar produtos:', error);
+    setProducts((data ?? []).map(mapLoteParaProduto));
+  }, []);
 
-  const createProduct = useCallback((payload) => {
-    const created = { id: crypto.randomUUID(), ...payload };
-    setProducts((current) => [created, ...current]);
-    if (created.quantity > 0) addMovement(created, 'Entrada', created.quantity, 'Cadastro inicial');
-    return created;
-  }, [setProducts, addMovement]);
+  const carregarMovimentacoes = useCallback(async () => {
+    const { data } = await supabase
+      .from('movimentacoes')
+      .select('id, tipo, quantidade, data_hora, lotes(numero_lote, insumos(nome))')
+      .order('data_hora', { ascending: false });
+    setMovements(
+      (data ?? []).map((m) => ({
+        id: m.id,
+        date: m.data_hora,
+        productName: m.lotes?.insumos?.nome,
+        lot: m.lotes?.numero_lote,
+        type: m.tipo === 'entrada' ? 'Entrada' : 'Saída',
+        quantity: m.quantidade,
+      }))
+    );
+  }, []);
 
-  const updateProduct = useCallback((id, payload) => {
-    setProducts((current) => current.map((item) => item.id === id ? { ...item, ...payload } : item));
-  }, [setProducts]);
+  useEffect(() => {
+    Promise.all([carregarProdutos(), carregarMovimentacoes()]).finally(() => setLoading(false));
+  }, [carregarProdutos, carregarMovimentacoes]);
 
-  const stockOut = useCallback((product, amount) => {
-    setProducts((current) => current.map((item) => item.id === product.id ? { ...item, quantity: item.quantity - amount } : item));
-    addMovement(product, 'Saída', amount, 'Baixa de estoque');
-  }, [setProducts, addMovement]);
+  const registrarMovimento = useCallback(async (lote_id, tipo, quantidade) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('movimentacoes').insert({
+      lote_id,
+      tipo,
+      quantidade,
+      usuario_id: user?.id,
+    });
+  }, []);
 
-  const removeProduct = useCallback((id) => {
-    setProducts((current) => current.filter((item) => item.id !== id));
-  }, [setProducts]);
+  const buscarOuCriarInsumo = useCallback(async (nome, categoriaNome) => {
+    const { data: categoria } = await supabase
+      .from('categorias')
+      .select('id')
+      .eq('nome', categoriaNome)
+      .maybeSingle();
 
-  return { products, movements, createProduct, updateProduct, stockOut, removeProduct };
+    let categoria_id = categoria?.id;
+    if (!categoria_id) {
+      const { data: novaCategoria } = await supabase
+        .from('categorias')
+        .insert({ nome: categoriaNome })
+        .select('id')
+        .single();
+      categoria_id = novaCategoria.id;
+    }
+
+    const { data: insumo } = await supabase
+      .from('insumos')
+      .select('id')
+      .eq('nome', nome)
+      .eq('categoria_id', categoria_id)
+      .maybeSingle();
+
+    if (insumo) return insumo.id;
+
+    const { data: novoInsumo } = await supabase
+      .from('insumos')
+      .insert({ nome, categoria_id })
+      .select('id')
+      .single();
+    return novoInsumo.id;
+  }, []);
+
+  const createProduct = useCallback(async (payload) => {
+    const insumo_id = await buscarOuCriarInsumo(payload.name, payload.category);
+
+    const { data: novoLote } = await supabase
+      .from('lotes')
+      .insert({
+        insumo_id,
+        numero_lote: payload.lot,
+        quantidade: payload.quantity,
+        data_validade: payload.expiry,
+        fabricante: payload.manufacturer,
+      })
+      .select('id')
+      .single();
+
+    if (payload.quantity > 0) {
+      await registrarMovimento(novoLote.id, 'entrada', payload.quantity);
+    }
+
+    await Promise.all([carregarProdutos(), carregarMovimentacoes()]);
+  }, [buscarOuCriarInsumo, registrarMovimento, carregarProdutos, carregarMovimentacoes]);
+
+  const updateProduct = useCallback(async (id, payload) => {
+    await supabase
+      .from('lotes')
+      .update({
+        numero_lote: payload.lot,
+        quantidade: payload.quantity,
+        data_validade: payload.expiry,
+        fabricante: payload.manufacturer,
+      })
+      .eq('id', id);
+    await carregarProdutos();
+  }, [carregarProdutos]);
+
+  const stockOut = useCallback(async (product, amount) => {
+    await supabase
+      .from('lotes')
+      .update({ quantidade: product.quantity - amount })
+      .eq('id', product.id);
+    await registrarMovimento(product.id, 'saida', amount);
+    await Promise.all([carregarProdutos(), carregarMovimentacoes()]);
+  }, [registrarMovimento, carregarProdutos, carregarMovimentacoes]);
+
+  const removeProduct = useCallback(async (id) => {
+    await supabase.from('lotes').delete().eq('id', id);
+    await carregarProdutos();
+  }, [carregarProdutos]);
+
+  return { products, movements, loading, createProduct, updateProduct, stockOut, removeProduct };
 }
