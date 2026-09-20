@@ -21,6 +21,8 @@ O Nuvemed propõe uma solução complementar em nuvem para esse controle, com ca
 
 O schema do banco (tabelas `categorias`, `insumos`, `lotes` e `movimentacoes`, com Row Level Security habilitado) está documentado em [`supabase/schema.sql`](./supabase/schema.sql).
 
+Se o banco já tiver sido criado com a versão anterior do schema, rode o bloco **MIGRAÇÃO** comentado no final do arquivo: ele adiciona `lotes.fabricante`, `movimentacoes.motivo` e o tipo `ajuste`.
+
 ## Como rodar localmente
 
 1. Clone o repositório e instale as dependências:
