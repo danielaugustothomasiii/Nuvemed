@@ -25,3 +25,45 @@ export const cardFilterLabels = {
   safe: 'Dentro do prazo',
   out: 'Sem estoque',
 };
+
+// ---------- Movimentações (tópico 1.4) ----------
+
+export const movementTypeLabels = {
+  entrada: 'Entrada',
+  saida: 'Saída',
+  ajuste: 'Ajuste',
+};
+
+export const movementTypeColors = {
+  entrada: 'green',
+  saida: 'blue',
+  ajuste: 'gold',
+};
+
+export const movementTypeOptions = [
+  { value: 'all', label: 'Todos os tipos' },
+  { value: 'entrada', label: 'Entrada' },
+  { value: 'saida', label: 'Saída' },
+  { value: 'ajuste', label: 'Ajuste' },
+];
+
+// Motivos sugeridos em cada tipo de movimentação.
+// O campo aceita texto livre, então a lista serve apenas como atalho.
+export const movementReasons = {
+  entrada: [
+    'Compra',
+    'Doação',
+    'Transferência recebida',
+    'Devolução de setor',
+    'Outros',
+  ],
+  saida: [
+    'Dispensação ao paciente',
+    'Transferência enviada',
+    'Perda ou avaria',
+    'Descarte por vencimento',
+    'Outros',
+  ],
+};
+
+export const CREATION_REASON = 'Cadastro inicial do lote';
