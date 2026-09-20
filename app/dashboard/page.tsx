@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Grid, Layout } from 'antd';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import { Toaster } from 'react-hot-toast';
 import MobileHeader from '@/components/layout/MobileHeader';
 import SidebarNav from '@/components/layout/SidebarNav';
@@ -9,6 +11,8 @@ import { useInventory } from '@/hooks/useInventory';
 import StockPage from '@/components/pages/StockPage';
 import MovementsPage from '@/components/pages/MovementsPage';
 import { colors } from '@/theme';
+
+dayjs.locale('pt-br');
 
 const { Sider, Content } = Layout;
 
