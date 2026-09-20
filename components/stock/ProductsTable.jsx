@@ -1,24 +1,27 @@
 import { Button, Dropdown, Empty, Grid, Tag, Typography } from 'antd';
-import { DeleteOutlined, EditOutlined, MoreOutlined, SwapOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, LoginOutlined, LogoutOutlined, MoreOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import PagedTable from '../common/PagedTable';
 import { formatDays, getExpiryInfo } from '../../utils/expiry';
 
 const { Text } = Typography;
 
-export default function ProductsTable({ products, onEdit, onStockOut, onDelete }) {
+export default function ProductsTable({ products, onEdit, onStockIn, onStockOut, onDelete }) {
   const screens = Grid.useBreakpoint();
   const isMobile = screens.md === false;
 
   const actionMenu = (product) => ({
     items: [
       { key: 'edit', icon: <EditOutlined />, label: 'Editar' },
-      { key: 'stockout', icon: <SwapOutlined />, label: 'Dar baixa', disabled: product.quantity === 0 },
+      { type: 'divider' },
+      { key: 'stockin', icon: <LoginOutlined />, label: 'Registrar entrada' },
+      { key: 'stockout', icon: <LogoutOutlined />, label: 'Dar baixa', disabled: product.quantity === 0 },
       { type: 'divider' },
       { key: 'delete', icon: <DeleteOutlined />, label: 'Excluir', danger: true },
     ],
     onClick: ({ key }) => {
       if (key === 'edit') onEdit(product);
+      if (key === 'stockin') onStockIn(product);
       if (key === 'stockout') onStockOut(product);
       if (key === 'delete') onDelete(product);
     },
@@ -40,7 +43,13 @@ export default function ProductsTable({ products, onEdit, onStockOut, onDelete }
       ),
     },
     { title: 'Categoria', dataIndex: 'category', key: 'category', width: 170 },
-    { title: 'Fabricante', dataIndex: 'manufacturer', key: 'manufacturer', width: 150 },
+    {
+      title: 'Fabricante',
+      dataIndex: 'manufacturer',
+      key: 'manufacturer',
+      width: 150,
+      render: (value) => value || <Text type="secondary">—</Text>,
+    },
     {
       title: 'Quantidade',
       dataIndex: 'quantity',
