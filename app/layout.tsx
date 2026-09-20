@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { App as AntdApp, ConfigProvider } from "antd";
+import ptBR from "antd/locale/pt_BR";
 import { antdTheme } from "@/theme";
 import "./globals.css";
 import "../styles.css";
@@ -38,7 +39,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AntdRegistry>
-            <ConfigProvider theme={antdTheme}>
+            <ConfigProvider theme={antdTheme} locale={ptBR}>
               <AntdApp>{children}</AntdApp>
             </ConfigProvider>
           </AntdRegistry>
