@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { App, Button, Card, Grid, InputNumber, Typography } from 'antd';
-import { ExclamationCircleOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons';
+import { App, Button, Card, Grid, Typography } from 'antd';
+import { ExclamationCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import PageHeader from '../layout/PageHeader';
 import ExpiryChart from '../stock/ExpiryChart';
 import FilterBadge from '../stock/FilterBadge';
+import MovementModal from '../stock/MovementModal';
 import ProductDrawer from '../stock/ProductDrawer';
 import ProductFilters from '../stock/ProductFilters';
 import ProductsTable from '../stock/ProductsTable';
@@ -12,16 +13,22 @@ import SummaryCards from '../stock/SummaryCards';
 import { cardFilterLabels, statusOptions } from '../../constants/inventory';
 import { filterProducts } from '../../utils/filterProducts';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
+
+function mensagemDeErro(error, fallback) {
+  return error?.message || fallback;
+}
 
 export default function StockPage({ inventory }) {
-  const { products, createProduct, updateProduct, stockOut, removeProduct } = inventory;
+  const { products, createProduct, updateProduct, stockIn, stockOut, removeProduct } = inventory;
   const { modal } = App.useApp();
   const screens = Grid.useBreakpoint();
   const compactButton = screens.sm === false;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [movement, setMovement] = useState({ open: false, type: 'saida', product: null });
   const [cardFilter, setCardFilter] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -48,6 +55,8 @@ export default function StockPage({ inventory }) {
     setCardFilter(null);
   };
 
+  // ---------- Cadastro e edição ----------
+
   const openCreate = () => {
     setEditing(null);
     setDrawerOpen(true);
@@ -58,62 +67,59 @@ export default function StockPage({ inventory }) {
     setDrawerOpen(true);
   };
 
-  const submitProduct = (payload) => {
-    if (editing) {
-      updateProduct(editing.id, payload);
-      toast.success('Medicamento atualizado com sucesso.');
-    } else {
-      createProduct(payload);
-      toast.success('Medicamento cadastrado com sucesso.');
+  const submitProduct = async (payload) => {
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateProduct(editing.id, payload);
+        toast.success('Medicamento atualizado com sucesso.');
+      } else {
+        await createProduct(payload);
+        toast.success('Medicamento cadastrado com sucesso.');
+      }
+      setDrawerOpen(false);
+    } catch (error) {
+      toast.error(mensagemDeErro(error, 'Não foi possível salvar o medicamento.'));
+    } finally {
+      setSaving(false);
     }
-    setDrawerOpen(false);
   };
 
-  const openStockOut = (product) => {
-    let amount = 1;
-    modal.confirm({
-      title: `Dar baixa em ${product.name}`,
-      icon: <SwapOutlined />,
-      content: (
-        <div className="stockout-modal-content">
-          <Text type="secondary">Estoque atual: {product.quantity}</Text>
-          <InputNumber
-            min={1}
-            max={Math.max(product.quantity, 1)}
-            defaultValue={1}
-            style={{ width: '100%' }}
-            onChange={(value) => { amount = Number(value || 1); }}
-            disabled={product.quantity === 0}
-          />
-        </div>
-      ),
-      okText: 'Confirmar baixa',
-      cancelText: 'Cancelar',
-      okButtonProps: { disabled: product.quantity === 0 },
-      onOk: () => {
-        if (product.quantity === 0) return undefined;
-        if (amount < 1 || amount > product.quantity) {
-          toast.error('Quantidade de baixa inválida.');
-          return Promise.reject();
-        }
-        stockOut(product, amount);
-        toast.success(`Baixa de ${amount} unidade${amount === 1 ? '' : 's'} registrada.`);
-        return undefined;
-      },
-    });
+  // ---------- Movimentações ----------
+
+  const openMovement = (type) => (product) => setMovement({ open: true, type, product });
+  const closeMovement = () => setMovement((current) => ({ ...current, open: false }));
+
+  const submitMovement = async (product, amount, reason) => {
+    const isEntrada = movement.type === 'entrada';
+    try {
+      await (isEntrada ? stockIn : stockOut)(product, amount, reason);
+      const unidade = `${amount} unidade${amount === 1 ? '' : 's'}`;
+      toast.success(isEntrada
+        ? `Entrada de ${unidade} registrada.`
+        : `Baixa de ${unidade} registrada.`);
+    } catch (error) {
+      toast.error(mensagemDeErro(error, 'Não foi possível registrar a movimentação.'));
+      throw error; // mantém o modal aberto para o usuário corrigir
+    }
   };
 
   const confirmDelete = (product) => {
     modal.confirm({
       title: 'Excluir medicamento?',
       icon: <ExclamationCircleOutlined />,
-      content: `${product.name}, lote ${product.lot}, será removido do estoque.`,
+      content: `${product.name}, lote ${product.lot}, será removido do estoque junto com o histórico de movimentações.`,
       okText: 'Excluir',
       okType: 'danger',
       cancelText: 'Cancelar',
-      onOk: () => {
-        removeProduct(product.id);
-        toast.success('Medicamento excluído.');
+      onOk: async () => {
+        try {
+          await removeProduct(product.id);
+          toast.success('Medicamento excluído.');
+        } catch (error) {
+          toast.error(mensagemDeErro(error, 'Não foi possível excluir o medicamento.'));
+          throw error;
+        }
       },
     });
   };
@@ -158,7 +164,8 @@ export default function StockPage({ inventory }) {
         <ProductsTable
           products={filteredProducts}
           onEdit={openEdit}
-          onStockOut={openStockOut}
+          onStockIn={openMovement('entrada')}
+          onStockOut={openMovement('saida')}
           onDelete={confirmDelete}
         />
       </Card>
@@ -166,8 +173,17 @@ export default function StockPage({ inventory }) {
       <ProductDrawer
         open={drawerOpen}
         product={editing}
+        saving={saving}
         onClose={() => setDrawerOpen(false)}
         onSubmit={submitProduct}
+      />
+
+      <MovementModal
+        open={movement.open}
+        type={movement.type}
+        product={movement.product}
+        onClose={closeMovement}
+        onSubmit={submitMovement}
       />
     </>
   );
