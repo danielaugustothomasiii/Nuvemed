@@ -8,7 +8,7 @@ export function filterProducts(products, { search, statusFilter, categoryFilter,
     .filter((product) => {
       const info = getExpiryInfo(product.expiry);
       const matchesSearch = !normalizedSearch || [product.name, product.lot, product.manufacturer]
-        .some((value) => value.toLowerCase().includes(normalizedSearch));
+        .some((value) => (value ?? '').toLowerCase().includes(normalizedSearch));
       const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
       const matchesStatus = statusFilter === 'all' || info.key === statusFilter;
       const matchesCard = !cardFilter
