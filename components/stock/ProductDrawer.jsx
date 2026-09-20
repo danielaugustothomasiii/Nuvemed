@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, DatePicker, Drawer, Form, Grid, Input, InputNumber, Select, Typography } from 'antd';
+import { Alert, Button, DatePicker, Drawer, Form, Grid, Input, InputNumber, Select, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { toast } from 'react-hot-toast';
 import { categories } from '../../constants/inventory';
@@ -7,7 +7,7 @@ import { categories } from '../../constants/inventory';
 const { Text } = Typography;
 const categoryOptions = categories.map((item) => ({ value: item, label: item }));
 
-export default function ProductDrawer({ open, product, onClose, onSubmit }) {
+export default function ProductDrawer({ open, product, saving = false, onClose, onSubmit }) {
   const [form] = Form.useForm();
   const screens = Grid.useBreakpoint();
   const isEditing = Boolean(product);
@@ -35,11 +35,26 @@ export default function ProductDrawer({ open, product, onClose, onSubmit }) {
       open={open}
       onClose={onClose}
       forceRender
-      extra={<Button type="primary" onClick={submit}>{isEditing ? 'Salvar' : 'Cadastrar'}</Button>}
+      maskClosable={!saving}
+      extra={(
+        <Button type="primary" onClick={submit} loading={saving}>
+          {isEditing ? 'Salvar' : 'Cadastrar'}
+        </Button>
+      )}
     >
       <Text type="secondary" className="drawer-intro">
         Preencha as informações do lote. O mesmo medicamento pode possuir vários lotes com validades diferentes.
       </Text>
+
+      {isEditing && (
+        <Alert
+          type="info"
+          showIcon
+          className="drawer-alert"
+          message="Alterar a quantidade aqui gera um ajuste de inventário no histórico. Para entradas e saídas do dia a dia, use as ações “Registrar entrada” e “Dar baixa”."
+        />
+      )}
+
       <Form form={form} layout="vertical" className="product-form" initialValues={{ quantity: 1 }}>
         <Form.Item name="name" label="Medicamento" rules={[{ required: true, message: 'Informe o medicamento.' }]}>
           <Input placeholder="Ex.: Dipirona 500mg" />
