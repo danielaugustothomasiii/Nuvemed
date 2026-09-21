@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { App as AntdApp, ConfigProvider } from "antd";
+import { App as AntdApp } from "antd";
 import ptBR from "antd/locale/pt_BR";
-import { antdTheme } from "@/theme";
+import { ThemeConfigProvider } from "@/components/theme-config-provider";
 import "./globals.css";
 import "../styles.css";
 
@@ -35,13 +35,13 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          forcedTheme="light"
+          enableSystem
           disableTransitionOnChange
         >
           <AntdRegistry>
-            <ConfigProvider theme={antdTheme} locale={ptBR}>
+            <ThemeConfigProvider locale={ptBR}>
               <AntdApp>{children}</AntdApp>
-            </ConfigProvider>
+            </ThemeConfigProvider>
           </AntdRegistry>
         </ThemeProvider>
       </body>

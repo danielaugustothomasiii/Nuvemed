@@ -711,3 +711,23 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+/* ---------- Modo escuro ---------- */
+.dark body {
+  background: #0f1a15;
+  color: #e6f3ec;
+}
+
+.dark .chart-card,
+.dark .summary-card,
+.dark .table-card {
+  background: #16241c;
+  border-color: #24382e;
+}
+
+.dark .content {
+  background: #0f1a15;
+}
+
+.dark .page-header-text .ant-typography-secondary {
+  color: #9fb5ac;
+}
